@@ -3,13 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Models\Booking;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class BookingController extends Controller
 {
     public function index()
     {
-        return Booking::where('user_id', auth()->id())->get();
+        $bookings = Booking::where('user_id', auth()->id())->with('Trado')->get();
+
+        return response()->json($bookings);
     }
 
     public function store(Request $request)
@@ -21,11 +24,15 @@ class BookingController extends Controller
             'quantity' => 'required|integer|min:1'
         ]);
     
+    // Parse tanggal dari format ISO ke format yang diinginkan
+        $checkInDate = Carbon::parse($request->check_in)->format('Y-m-d');
+        $checkOutDate = Carbon::parse($request->check_out)->format('Y-m-d');
+
         // Cek ketersediaan trado
         $existingBookings = Booking::where('trado_id', $request->trado_id)
-            ->where(function($query) use ($request) {
-                $query->whereBetween('check_in', [$request->check_in, $request->check_out])
-                      ->orWhereBetween('check_out', [$request->check_in, $request->check_out]);
+            ->where(function($query) use ($checkInDate, $checkOutDate) {
+                $query->whereBetween('check_in', [$checkInDate, $checkOutDate])
+                    ->orWhereBetween('check_out', [$checkInDate, $checkOutDate]);
             })->sum('quantity');
     
         // Misalkan jumlah trado yang tersedia adalah 10
@@ -38,8 +45,8 @@ class BookingController extends Controller
         $booking = Booking::create([
             'user_id' => auth()->id(),
             'trado_id' => $request->trado_id,
-            'check_in' => $request->check_in,
-            'check_out' => $request->check_out,
+            'check_in' => $checkInDate,
+            'check_out' => $checkOutDate,
             'quantity' => $request->quantity,
             'status' => 'pending'
         ]);

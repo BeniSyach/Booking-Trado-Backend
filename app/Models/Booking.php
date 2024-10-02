@@ -17,4 +17,9 @@ class Booking extends Model
         'quantity',
         'status'
     ];
+
+    public function trado()
+    {
+        return $this->belongsTo(Trado::class);
+    }
 }
