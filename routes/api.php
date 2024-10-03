@@ -27,6 +27,7 @@ Route::middleware('auth:sanctum')->post('logout', [AuthController::class, 'logou
 Route::middleware('auth:sanctum')->group(function () {
     
     Route::apiResource('trados', TradoController::class);
+    Route::post('/check-availability', [TradoController::class, 'checkAvailability']);
 
     Route::get('bookings', [BookingController::class, 'index']);
     Route::post('bookings', [BookingController::class, 'store']);

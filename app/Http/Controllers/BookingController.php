@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Booking;
+use App\Models\Trado;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -18,28 +19,31 @@ class BookingController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'trado_id' => 'required',
+            'trado_id' => 'required|exists:trados,id',
             'check_in' => 'required|date',
             'check_out' => 'required|date|after_or_equal:check_in',
             'quantity' => 'required|integer|min:1'
         ]);
     
-    // Parse tanggal dari format ISO ke format yang diinginkan
         $checkInDate = Carbon::parse($request->check_in)->format('Y-m-d');
         $checkOutDate = Carbon::parse($request->check_out)->format('Y-m-d');
-
-        // Cek ketersediaan trado
+    
+        $trado = Trado::find($request->trado_id);
+    
+        if (!$trado) {
+            return response()->json(['error' => 'Trado tidak ditemukan'], 404);
+        }
+    
         $existingBookings = Booking::where('trado_id', $request->trado_id)
             ->where(function($query) use ($checkInDate, $checkOutDate) {
                 $query->whereBetween('check_in', [$checkInDate, $checkOutDate])
-                    ->orWhereBetween('check_out', [$checkInDate, $checkOutDate]);
+                      ->orWhereBetween('check_out', [$checkInDate, $checkOutDate]);
             })->sum('quantity');
     
-        // Misalkan jumlah trado yang tersedia adalah 10
-        $totalAvailable = 10;
+        $totalAvailable = $trado->available_quantity;
     
         if ($existingBookings + $request->quantity > $totalAvailable) {
-            return response()->json(['error' => 'Trado not available for the selected dates'], 400);
+            return response()->json(['error' => 'Trado tidak tersedia untuk tanggal yang dipilih'], 400);
         }
     
         $booking = Booking::create([
@@ -53,6 +57,7 @@ class BookingController extends Controller
     
         return response()->json($booking, 201);
     }
+    
 
     public function update(Request $request, $id)
     {
